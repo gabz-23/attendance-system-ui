@@ -5,25 +5,19 @@ import Link from "next/link"
 import { ArrowLeft, Eye, EyeOff, Loader2, Save, User } from "lucide-react"
 import { TopNav } from "@/components/top-nav"
 import { useRole } from "@/components/role-context"
-import { updateUserProfile } from "@/lib/queries"
-import { createClient } from "@/lib/supabase/client"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
 
 export default function ProfilePage() {
-  const { user, loading: userLoading } = useRole()
-  const supabase = createClient()
+  const { user, loading: userLoading, refreshUser } = useRole()
   const [name, setName] = useState(user?.name ?? "")
   const [email, setEmail] = useState(user?.email ?? "")
-  const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
-  const [showCurrent, setShowCurrent] = useState(false)
   const [showNew, setShowNew] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [savingProfile, setSavingProfile] = useState(false)
@@ -32,6 +26,7 @@ export default function ProfilePage() {
   const [passwordSuccess, setPasswordSuccess] = useState(false)
   const [profileError, setProfileError] = useState("")
   const [passwordError, setPasswordError] = useState("")
+  const [emailConfirming, setEmailConfirming] = useState(false)
 
   if (userLoading) return null
   if (!user) return null
@@ -41,11 +36,34 @@ export default function ProfilePage() {
     setSavingProfile(true)
     setProfileSuccess(false)
     setProfileError("")
+    setEmailConfirming(false)
+
     try {
-      await updateUserProfile(user.id, { name, email })
+      const res = await fetch("/api/auth/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email: email !== user.email ? email : undefined }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        if (data.needsReauth) {
+          setProfileError("Debes cerrar sesión y volver a iniciarla para cambiar el correo.")
+        } else {
+          setProfileError(data.error || "Error al guardar los datos.")
+        }
+        return
+      }
+
+      if (email !== user.email) {
+        setEmailConfirming(true)
+      }
+
       setProfileSuccess(true)
+      await refreshUser()
     } catch {
-      setProfileError("Error al guardar los datos.")
+      setProfileError("Error de conexión.")
     } finally {
       setSavingProfile(false)
     }
@@ -67,14 +85,28 @@ export default function ProfilePage() {
 
     setSavingPassword(true)
     try {
-      const { error } = await supabase.auth.updateUser({ password: newPassword })
-      if (error) throw error
+      const res = await fetch("/api/auth/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ newPassword }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        if (data.needsReauth) {
+          setPasswordError("Debes cerrar sesión y volver a iniciarla para cambiar la contraseña.")
+        } else {
+          setPasswordError(data.error || "Error al cambiar la contraseña.")
+        }
+        return
+      }
+
       setPasswordSuccess(true)
-      setCurrentPassword("")
       setNewPassword("")
       setConfirmPassword("")
     } catch {
-      setPasswordError("Error al cambiar la contraseña.")
+      setPasswordError("Error de conexión.")
     } finally {
       setSavingPassword(false)
     }
@@ -122,10 +154,20 @@ export default function ProfilePage() {
               <div className="flex flex-col gap-2">
                 <Label htmlFor="email">Correo electrónico</Label>
                 <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                {email !== user.email && (
+                  <p className="text-xs text-muted-foreground">
+                    Se enviará un correo de confirmación a la nueva dirección.
+                  </p>
+                )}
               </div>
 
-              {profileSuccess && (
+              {profileSuccess && !emailConfirming && (
                 <p className="text-sm font-medium text-primary">Datos actualizados correctamente.</p>
+              )}
+              {emailConfirming && (
+                <p className="text-sm font-medium text-primary">
+                  Se envió un correo de confirmación a <strong>{email}</strong>. Revisa tu bandeja de entrada para verificar el cambio.
+                </p>
               )}
               {profileError && (
                 <p className="text-sm font-medium text-destructive">{profileError}</p>

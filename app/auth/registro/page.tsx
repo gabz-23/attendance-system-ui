@@ -11,6 +11,22 @@ import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
 
+const ERROR_MAP: Record<string, string> = {
+  "User already registered": "Este correo ya está registrado.",
+  "Password should be at least 6 characters": "La contraseña debe tener al menos 6 caracteres.",
+  "Invalid email": "Correo electrónico inválido.",
+  "Unable to validate email address: invalid format": "Formato de correo electrónico inválido.",
+  "Signup requires a valid password": "La contraseña es obligatoria.",
+  "Email signups are disabled": "Los registros por correo están desactivados.",
+}
+
+function translateError(message: string): string {
+  for (const [en, es] of Object.entries(ERROR_MAP)) {
+    if (message.includes(en)) return es
+  }
+  return message
+}
+
 export default function RegisterPage() {
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
@@ -40,17 +56,12 @@ export default function RegisterPage() {
       })
 
       if (authError) {
-        setError(authError.message || "Error al crear la cuenta.")
+        setError(translateError(authError.message) || "Error al crear la cuenta.")
         setSubmitting(false)
         return
       }
 
-      if (!data.user) {
-        window.location.href = "/auth/iniciar-sesion"
-        return
-      }
-
-      window.location.href = role === "professor" ? "/profesor" : "/estudiante"
+      window.location.href = "/auth/iniciar-sesion"
     } catch {
       setError("Error de conexión.")
       setSubmitting(false)

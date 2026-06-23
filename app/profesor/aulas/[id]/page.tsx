@@ -14,7 +14,6 @@ import {
   updateClassroomActive,
   getAttendanceByDate,
   getAttendanceDates,
-  getEnrolledStudents,
 } from "@/lib/queries"
 import { supabase } from "@/lib/supabase"
 import type { AttendanceRecordRow, EnrolledStudent } from "@/lib/queries"
@@ -53,6 +52,8 @@ export default function ClassroomDetailPage({ params }: { params: Promise<{ id: 
   const [classroom, setClassroom] = useState<any>(null)
   const [attendance, setAttendance] = useState<AttendanceRecordRow[]>([])
   const [students, setStudents] = useState<EnrolledStudent[]>([])
+  const [studentsLoading, setStudentsLoading] = useState(true)
+  const [studentsError, setStudentsError] = useState("")
   const [loading, setLoading] = useState(true)
   const [generated, setGenerated] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -70,16 +71,14 @@ export default function ClassroomDetailPage({ params }: { params: Promise<{ id: 
       supabase.from("classrooms").select("*").eq("id", id).single(),
       fetchAttendance(today),
       getAttendanceDates(id),
-      getEnrolledStudents(id),
     ])
-      .then(([cRes, , dates, enrolled]) => {
+      .then(([cRes, , dates]) => {
         if (cRes.error || !cRes.data) {
           notFound()
           return
         }
         setClassroom(cRes.data)
         setAvailableDates(dates)
-        setStudents(enrolled)
         setLoading(false)
       })
       .catch((e) => {
@@ -87,6 +86,23 @@ export default function ClassroomDetailPage({ params }: { params: Promise<{ id: 
         setLoading(false)
       })
   }, [id, today, fetchAttendance])
+
+  useEffect(() => {
+    fetch(`/api/classrooms/${id}/students`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.error) {
+          setStudentsError(data.error)
+        } else {
+          setStudents(data.students ?? [])
+        }
+        setStudentsLoading(false)
+      })
+      .catch(() => {
+        setStudentsError("Error al cargar los estudiantes.")
+        setStudentsLoading(false)
+      })
+  }, [id])
 
   useEffect(() => {
     if (!loading) {
@@ -299,7 +315,11 @@ export default function ClassroomDetailPage({ params }: { params: Promise<{ id: 
             <CardTitle>Estudiantes inscritos ({students.length})</CardTitle>
           </CardHeader>
           <CardContent>
-            {students.length === 0 ? (
+            {studentsLoading ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">Cargando estudiantes...</p>
+            ) : studentsError ? (
+              <p className="py-8 text-center text-sm text-destructive">{studentsError}</p>
+            ) : students.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted-foreground">
                 No hay estudiantes inscritos en esta aula.
               </p>

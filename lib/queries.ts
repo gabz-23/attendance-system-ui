@@ -209,14 +209,14 @@ export async function getEnrolledStudents(
   console.log("getEnrolledStudents studentIds:", studentIds)
 
   const [profilesRes, attendanceRes] = await Promise.all([
-    supabase.from("profiles").select("id, name, email").in("id", studentIds),
+    supabase.from("profiles").select("id, name").in("id", studentIds),
     supabase
       .from("attendance")
       .select("student_id, status")
       .eq("classroom_id", classroomId),
   ])
 
-  const profileMap = new Map(profilesRes.data?.map((p) => [p.id, p]))
+  const profileMap = new Map(profilesRes.data?.map((p) => [p.id, p]) ?? [])
 
   type StudentStats = { present: number; total: number }
   const stats = new Map<string, StudentStats>()
@@ -233,7 +233,7 @@ export async function getEnrolledStudents(
     return {
       id: e.student_id,
       name: profile?.name ?? "",
-      email: profile?.email ?? "",
+      email: "",
       attendanceCount: s.present,
       totalDays: s.total,
     }

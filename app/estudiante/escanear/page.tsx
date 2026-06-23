@@ -1,14 +1,30 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import Link from "next/link"
-import { Check, X } from "lucide-react"
+import { Check, X, RefreshCw } from "lucide-react"
 import { TopNav } from "@/components/top-nav"
 import { Button } from "@/components/ui/button"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+
+type ScanResult = "scanning" | "success" | "error"
 
 export default function ScanPage() {
-  const [tab, setTab] = useState("camera")
+  const [result, setResult] = useState<ScanResult>("scanning")
+  const [errorMessage, setErrorMessage] = useState("")
+
+  const handleScanSuccess = useCallback(() => {
+    setResult("success")
+  }, [])
+
+  const handleScanError = useCallback((message: string) => {
+    setErrorMessage(message)
+    setResult("error")
+  }, [])
+
+  const handleRetry = useCallback(() => {
+    setResult("scanning")
+    setErrorMessage("")
+  }, [])
 
   return (
     <div className="min-h-screen bg-muted/40">
@@ -17,35 +33,23 @@ export default function ScanPage() {
         <h1 className="mb-2 text-2xl font-semibold text-foreground">Escanear QR</h1>
         <p className="mb-6 text-sm text-muted-foreground">Marca tu asistencia escaneando el código de tu profesor</p>
 
-        <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="mb-6 w-full">
-            <TabsTrigger value="camera" className="flex-1">
-              Cámara
-            </TabsTrigger>
-            <TabsTrigger value="success" className="flex-1">
-              Éxito
-            </TabsTrigger>
-            <TabsTrigger value="error" className="flex-1">
-              Error
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="camera">
-            <CameraState />
-          </TabsContent>
-          <TabsContent value="success">
-            <SuccessState />
-          </TabsContent>
-          <TabsContent value="error">
-            <ErrorState />
-          </TabsContent>
-        </Tabs>
+        {result === "scanning" && (
+          <CameraState onScanSuccess={handleScanSuccess} onScanError={handleScanError} />
+        )}
+        {result === "success" && <SuccessState />}
+        {result === "error" && <ErrorState message={errorMessage} onRetry={handleRetry} />}
       </main>
     </div>
   )
 }
 
-function CameraState() {
+function CameraState({
+  onScanSuccess,
+  onScanError,
+}: {
+  onScanSuccess: () => void
+  onScanError: (message: string) => void
+}) {
   return (
     <div className="flex flex-col items-center gap-4">
       <div className="relative h-[300px] w-full overflow-hidden rounded-xl bg-[oklch(0.22_0.01_160)]">
@@ -87,16 +91,19 @@ function SuccessState() {
   )
 }
 
-function ErrorState() {
+function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
     <div className="flex flex-col items-center gap-3 py-8 text-center">
       <div className="flex size-20 animate-pop-in items-center justify-center rounded-full bg-destructive/10">
         <X className="size-10 text-destructive" strokeWidth={3} />
       </div>
       <h2 className="text-2xl font-bold text-foreground">No se pudo registrar</h2>
-      <p className="text-pretty text-sm text-muted-foreground">Este código QR ha expirado</p>
+      <p className="text-pretty text-sm text-muted-foreground">{message}</p>
       <div className="mt-4 flex w-full flex-col gap-2">
-        <Button>Intentar de nuevo</Button>
+        <Button onClick={onRetry}>
+          <RefreshCw className="size-4" />
+          Intentar de nuevo
+        </Button>
         <Button asChild variant="ghost">
           <Link href="/estudiante">Volver a mis aulas</Link>
         </Button>
