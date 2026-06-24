@@ -65,8 +65,16 @@ export default function LoginPage() {
                   required
                 />
               </div>
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="password">Contraseña</Label>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="password">Contraseña</Label>
+                    <Link
+                      href="/auth/recuperar-contrasena"
+                      className="text-xs text-muted-foreground hover:text-primary hover:underline"
+                    >
+                      ¿Olvidaste tu contraseña?
+                    </Link>
+                  </div>
                 <div className="relative">
                   <Input
                     id="password"
