@@ -45,7 +45,10 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { session, classroom, t } = body ?? {}
+    const { session, classroom, t, exp } = body ?? {}
+
+    const CLOCK_SKEW_MS = 5 * 60 * 1000
+    const QR_MAX_AGE_MS = 24 * 60 * 60 * 1000
 
     if (!session || !UUID_RE.test(String(session))) {
       return NextResponse.json(
@@ -61,9 +64,27 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (t) {
+    if (exp !== undefined && exp !== null && exp !== "") {
+      const expMs = Number(exp)
+      if (!Number.isFinite(expMs)) {
+        return NextResponse.json(
+          { error: "El código QR no es válido." },
+          { status: 400 },
+        )
+      }
+      if (expMs > 0 && Date.now() > expMs + CLOCK_SKEW_MS) {
+        return NextResponse.json(
+          { error: "Este código QR ha caducado. Pide uno nuevo." },
+          { status: 410 },
+        )
+      }
+    } else if (t) {
       const ageMs = Date.now() - Number(t)
-      if (!Number.isFinite(ageMs) || ageMs < 0 || ageMs > 24 * 60 * 60 * 1000) {
+      if (
+        !Number.isFinite(ageMs) ||
+        ageMs > QR_MAX_AGE_MS ||
+        ageMs < -CLOCK_SKEW_MS
+      ) {
         return NextResponse.json(
           { error: "Este código QR ha caducado. Pide uno nuevo." },
           { status: 410 },

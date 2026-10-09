@@ -26,7 +26,13 @@ function parseQrUrl(data: string, fallbackClassroom?: string | null) {
     if (!session || !classroom) return null
 
     const t = url.searchParams.get("t")
-    return { session, classroom, t: t ? Number(t) : undefined }
+    const exp = url.searchParams.get("exp")
+    return {
+      session,
+      classroom,
+      t: t ? Number(t) : undefined,
+      exp: exp !== null && exp !== "" ? Number(exp) : undefined,
+    }
   } catch {
     return null
   }
@@ -155,6 +161,7 @@ function CameraState({
             session: parsed.session,
             classroom: parsed.classroom,
             t: parsed.t,
+            exp: parsed.exp,
           }),
         })
         const json = await res.json().catch(() => ({}))

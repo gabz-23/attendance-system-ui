@@ -41,15 +41,17 @@ function useCountdown(durationSeconds: number) {
     return { timeLeft, remaining, progress, generation };
 }
 
-function useQrDataUrl(generation: number, classroomId?: string) {
+function useQrDataUrl(generation: number, classroomId?: string, durationSeconds?: number) {
     const [qrSrc, setQrSrc] = useState('/qr-code.png');
 
     useEffect(() => {
         const token = crypto.randomUUID();
         const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-        const url = `${baseUrl}/estudiante/escanear?session=${token}&classroom=${classroomId ?? 'unknown'}&t=${Date.now()}`;
+        const t = Date.now();
+        const exp = durationSeconds && durationSeconds > 0 ? t + durationSeconds * 1000 : 0;
+        const url = `${baseUrl}/estudiante/escanear?session=${token}&classroom=${classroomId ?? 'unknown'}&t=${t}&exp=${exp}`;
         QRCode.toDataURL(url, { width: 480, margin: 1 }).then(setQrSrc);
-    }, [generation, classroomId]);
+    }, [generation, classroomId, durationSeconds]);
 
     return qrSrc;
 }
@@ -93,7 +95,7 @@ function downloadQrImage(qrSrc: string, filename: string) {
 export function QrActiveState({ classroomId }: { classroomId: string }) {
     const [durationSeconds, setDurationSeconds] = useState(600);
     const { remaining, progress, generation } = useCountdown(durationSeconds);
-    const qrSrc = useQrDataUrl(generation, classroomId);
+    const qrSrc = useQrDataUrl(generation, classroomId, durationSeconds);
 
     return (
         <div className="flex flex-col items-center gap-4">
@@ -144,7 +146,7 @@ export function QrActiveState({ classroomId }: { classroomId: string }) {
 export function QrCountdown({ classroomId }: { classroomId: string }) {
     const [durationSeconds, setDurationSeconds] = useState(600);
     const { remaining, progress, generation } = useCountdown(durationSeconds);
-    const qrSrc = useQrDataUrl(generation, classroomId);
+    const qrSrc = useQrDataUrl(generation, classroomId, durationSeconds);
 
     return (
         <>
