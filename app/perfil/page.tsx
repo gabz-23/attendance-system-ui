@@ -143,9 +143,7 @@ export default function ProfilePage() {
               <div className="flex flex-col gap-2">
                 <Label htmlFor="email">Correo electrónico</Label>
                 <Input id="email" type="email" value={user.email} disabled readOnly />
-                <p className="text-xs text-muted-foreground">
-                  El correo no se puede modificar.
-                </p>
+               
               </div>
 
               {profileSuccess && (
