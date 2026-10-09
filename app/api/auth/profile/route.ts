@@ -25,7 +25,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "No autorizado." }, { status: 401 })
     }
 
-    const { name, email, newPassword } = await request.json()
+    const { name, newPassword } = await request.json()
 
     if (name !== undefined) {
       const { error: profileError } = await supabase
@@ -35,23 +35,6 @@ export async function PATCH(request: NextRequest) {
 
       if (profileError) {
         return NextResponse.json({ error: `Error al actualizar el nombre: ${profileError.message}` }, { status: 500 })
-      }
-    }
-
-    if (email !== undefined && email !== user.email) {
-      const { error: emailError } = await supabase.auth.updateUser({ email })
-
-      if (emailError) {
-        if (emailError.message?.includes("reauthenticate")) {
-          return NextResponse.json(
-            { error: "Debes volver a iniciar sesión para cambiar el correo.", needsReauth: true },
-            { status: 400 },
-          )
-        }
-        return NextResponse.json(
-          { error: translateError(emailError.message) },
-          { status: 500 },
-        )
       }
     }
 
@@ -81,7 +64,7 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({
       user: {
         id: user.id,
-        email: email ?? user.email,
+        email: user.email,
         name: freshProfile?.name ?? user.email,
         role: freshProfile?.role ?? "student",
       },

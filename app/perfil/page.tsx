@@ -15,7 +15,6 @@ import { Label } from "@/components/ui/label"
 export default function ProfilePage() {
   const { user, loading: userLoading, refreshUser } = useRole()
   const [name, setName] = useState(user?.name ?? "")
-  const [email, setEmail] = useState(user?.email ?? "")
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [showNew, setShowNew] = useState(false)
@@ -26,7 +25,6 @@ export default function ProfilePage() {
   const [passwordSuccess, setPasswordSuccess] = useState(false)
   const [profileError, setProfileError] = useState("")
   const [passwordError, setPasswordError] = useState("")
-  const [emailConfirming, setEmailConfirming] = useState(false)
 
   if (userLoading) return null
   if (!user) return null
@@ -36,28 +34,19 @@ export default function ProfilePage() {
     setSavingProfile(true)
     setProfileSuccess(false)
     setProfileError("")
-    setEmailConfirming(false)
 
     try {
       const res = await fetch("/api/auth/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email: email !== user.email ? email : undefined }),
+        body: JSON.stringify({ name }),
       })
 
       const data = await res.json()
 
       if (!res.ok) {
-        if (data.needsReauth) {
-          setProfileError("Debes cerrar sesión y volver a iniciarla para cambiar el correo.")
-        } else {
-          setProfileError(data.error || "Error al guardar los datos.")
-        }
+        setProfileError(data.error || "Error al guardar los datos.")
         return
-      }
-
-      if (email !== user.email) {
-        setEmailConfirming(true)
       }
 
       setProfileSuccess(true)
@@ -153,21 +142,14 @@ export default function ProfilePage() {
               </div>
               <div className="flex flex-col gap-2">
                 <Label htmlFor="email">Correo electrónico</Label>
-                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-                {email !== user.email && (
-                  <p className="text-xs text-muted-foreground">
-                    Se enviará un correo de confirmación a la nueva dirección.
-                  </p>
-                )}
+                <Input id="email" type="email" value={user.email} disabled readOnly />
+                <p className="text-xs text-muted-foreground">
+                  El correo no se puede modificar.
+                </p>
               </div>
 
-              {profileSuccess && !emailConfirming && (
+              {profileSuccess && (
                 <p className="text-sm font-medium text-primary">Datos actualizados correctamente.</p>
-              )}
-              {emailConfirming && (
-                <p className="text-sm font-medium text-primary">
-                  Se envió un correo de confirmación a <strong>{email}</strong>. Revisa tu bandeja de entrada para verificar el cambio.
-                </p>
               )}
               {profileError && (
                 <p className="text-sm font-medium text-destructive">{profileError}</p>
