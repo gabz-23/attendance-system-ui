@@ -175,34 +175,27 @@ export default function ClassroomDetailPage({ params }: { params: Promise<{ id: 
         year: "numeric",
       })
 
-  function exportPdf() {
-    import("jspdf").then(({ default: jsPDF }) =>
-      import("jspdf-autotable").then(() => {
-        const doc = new jsPDF()
-        const title = `${classroom.subject} — ${classroom.name}`
-        doc.setFontSize(16)
-        doc.text(title, 14, 20)
-        doc.setFontSize(10)
-        doc.text(`Fecha: ${dateLabel}`, 14, 28)
+  async function exportPdf() {
+    const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+      import("jspdf"),
+      import("jspdf-autotable"),
+    ])
 
-        const body = attendance.map((r, i) => [
-          String(i + 1),
-          r.studentName,
-          r.date,
-          r.time,
-        ])
+    const doc = new jsPDF()
+    doc.setFontSize(16)
+    doc.text(`${classroom.subject} — ${classroom.name}`, 14, 20)
+    doc.setFontSize(10)
+    doc.text(`Fecha: ${dateLabel}`, 14, 28)
 
-        ;(doc as any).autoTable({
-          startY: 34,
-          head: [["#", "Estudiante", "Fecha", "Hora"]],
-          body,
-          styles: { fontSize: 9 },
-          headStyles: { fillColor: [59, 130, 246] },
-        })
+    autoTable(doc, {
+      startY: 34,
+      head: [["#", "Estudiante", "Fecha", "Hora"]],
+      body: attendance.map((r, i) => [String(i + 1), r.studentName, r.date, r.time]),
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [59, 130, 246] },
+    })
 
-        doc.save(`asistencias-${classroom.subject}-${selectedDate}.pdf`)
-      }),
-    )
+    doc.save(`asistencias-${classroom.subject}-${selectedDate}.pdf`)
   }
 
   if (loading) return null
