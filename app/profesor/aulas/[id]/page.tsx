@@ -12,11 +12,10 @@ import {
 import {
   deleteClassroom,
   updateClassroomActive,
-  getAttendanceByDate,
-  getAttendanceDates,
 } from "@/lib/queries"
 import { supabase } from "@/lib/supabase"
 import type { AttendanceRecordRow, EnrolledStudent } from "@/lib/queries"
+import { localDateString } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -57,28 +56,37 @@ export default function ClassroomDetailPage({ params }: { params: Promise<{ id: 
   const [loading, setLoading] = useState(true)
   const [generated, setGenerated] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  const today = new Date().toISOString().split("T")[0]
+  const today = localDateString()
   const [selectedDate, setSelectedDate] = useState(today)
   const [availableDates, setAvailableDates] = useState<string[]>([])
 
   const fetchAttendance = useCallback(async (date: string) => {
-    const rows = await getAttendanceByDate(id, date)
-    setAttendance(rows)
+    const res = await fetch(`/api/classrooms/${id}/attendance?date=${date}`)
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error ?? "Error al cargar las asistencias.")
+    setAttendance(data.attendance ?? [])
+    setAvailableDates(data.dates ?? [])
   }, [id])
+
+  const refreshAttendance = useCallback(async () => {
+    try {
+      await fetchAttendance(selectedDate)
+    } catch (e) {
+      console.error("Error refreshing attendance:", e)
+    }
+  }, [fetchAttendance, selectedDate])
 
   useEffect(() => {
     Promise.all([
       supabase.from("classrooms").select("*").eq("id", id).single(),
       fetchAttendance(today),
-      getAttendanceDates(id),
     ])
-      .then(([cRes, , dates]) => {
+      .then(([cRes]) => {
         if (cRes.error || !cRes.data) {
           notFound()
           return
         }
         setClassroom(cRes.data)
-        setAvailableDates(dates)
         setLoading(false)
       })
       .catch((e) => {
@@ -109,6 +117,31 @@ export default function ClassroomDetailPage({ params }: { params: Promise<{ id: 
       fetchAttendance(selectedDate)
     }
   }, [selectedDate, loading, fetchAttendance])
+
+  useEffect(() => {
+    if (loading) return
+
+    const channel = supabase
+      .channel(`attendance-${id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "attendance",
+          filter: `classroom_id=eq.${id}`,
+        },
+        () => refreshAttendance(),
+      )
+      .subscribe()
+
+    const interval = setInterval(refreshAttendance, 10000)
+
+    return () => {
+      supabase.removeChannel(channel)
+      clearInterval(interval)
+    }
+  }, [loading, id, refreshAttendance])
 
   async function handleDateChange(date: string) {
     setSelectedDate(date)

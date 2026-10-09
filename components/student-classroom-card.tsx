@@ -51,7 +51,7 @@ export function StudentClassroomCard({ classroom }: { classroom: StudentClassroo
             <Link href={`/estudiante/aulas/${classroom.id}`}>Ver asistencias</Link>
           </Button>
           <Button asChild className="flex-1">
-            <Link href="/estudiante/escanear">
+            <Link href={`/estudiante/escanear?classroom=${classroom.id}`}>
               <QrCode className="size-4" />
               Escanear QR
             </Link>

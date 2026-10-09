@@ -1,4 +1,5 @@
 import { supabase } from "./supabase"
+import { localDateString } from "./utils"
 
 export interface ProfessorClassroomCard {
   id: string
@@ -278,7 +279,7 @@ export async function getAttendanceDates(
 export async function getTodaysAttendance(
   classroomId: string,
 ): Promise<AttendanceRecordRow[]> {
-  const today = new Date().toISOString().split("T")[0]
+  const today = localDateString()
 
   const { data, error } = await supabase
     .from("attendance")
