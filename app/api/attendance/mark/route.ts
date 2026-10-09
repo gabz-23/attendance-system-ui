@@ -7,7 +7,17 @@ const UUID_RE =
 
 function localTime() {
   const now = new Date()
-  return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`
+  const parts = new Intl.DateTimeFormat("es-VE", {
+    timeZone: "America/Caracas",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(now)
+
+  const h = parts.find((p) => p.type === "hour")?.value
+  const m = parts.find((p) => p.type === "minute")?.value
+
+  return `${h?.padStart(2, "0")}:${m?.padStart(2, "0")}`
 }
 
 export async function POST(request: NextRequest) {
